@@ -4,13 +4,12 @@ import CarouselItem from './CarouselItem'
 import {useEffect, useMemo, useRef, useState} from 'react'
 import {gsap} from 'gsap'
 import {usePrevious} from 'react-use'
-import {getPiramidalIndex} from './utils'
 
 // Plane Settings
 const planeSettings = {
   width: 2.5,
   height: 3.5,
-  gap: 0.1
+  gap: 0.3
 }
 
 // Gsap Defaults
@@ -28,37 +27,25 @@ export default function Carousel() {
 
   // Vars
   const progress = useRef(50)
-  const startY = useRef(0)
-  const isDown = useRef(false)
   const speedWheel = 0.02
-  const speedDrag = -0.1
   const $items = useMemo(() => {
     if ($root) return $root.children
   }, [$root])
+  const angleStep = Math.PI * 2 / images.length
 
   // Display Items
   const displayItems = (item, index, active) => {
-    const piramidalIndex = getPiramidalIndex($items, active)[index]
+    const angle = angleStep * (index - active)
 
     gsap.to(item.position, {
       x: 0,
-      y: (index - active) * (planeSettings.height + planeSettings.gap)
+      y: Math.cos(angle),
+      z: -Math.sin(angle)
     })
 
-    gsap.to(item.rotation, {
-      x: activePlane ? 0 : $items.length * -0.5 + piramidalIndex * 0.5,
-      duration: 1,
-      ease: 'power3.out',
-    })
+    item.position.multiplyScalar(4)
 
-    if (index === activePlane) return
-    gsap.to(item.scale, {
-      x: activePlane !== null ? 0 : 1,
-      y: activePlane !== null ? 0 : 1,
-      z: activePlane !== null ? 0 : 1,
-      duration: 1,
-      ease: 'power3.out',
-    })
+    item.lookAt(0, 0, 0);
   }
 
   // RAF
@@ -78,26 +65,23 @@ export default function Carousel() {
     progress.current = progress.current + (-wheelProgress * speedWheel)
   }
 
-  // Handle Down
-  const handleDown = (e) => {
-    if (activePlane !== null) return
-    isDown.current = true
-    startY.current = e.clientY || (e.touches && e.touches[0].cleintY) || 0
-  }
+  // AI connection
+  useEffect(() => {
+    const handleAiRecommend = (e) => {
+      if (!e.detail) {
+        setActivePlane(null)
+        return
+      }
 
-  // Handle Up
-  const handleUp = () => {
-    isDown.current = false
-  }
+      setActivePlane(images.findIndex(image => image.slug === e.detail))
+    }
 
-  // HandleMove
-  const handleMove = (e) => {
-    if (activePlane !== null || !isDown.current) return
-    const y = e.clientY || (e.touches && e.touches[0].clientY) || 0
-    const mouseProgress = -(y - startY.current) * speedDrag
-    progress.current = progress.current + mouseProgress
-    startY.current = y
-  }
+    document.addEventListener('articleRecommended', handleAiRecommend)
+
+    return () => {
+      document.removeEventListener('articleRecommended', setActivePlane)
+    }
+  }, [])
 
   // Click
   useEffect(() => {
@@ -113,11 +97,6 @@ export default function Carousel() {
       <mesh
         position={[0, 0, -0.01]}
         onWheel={handleWheel}
-        onPointerDown={handleDown}
-        onPointerUp={handleUp}
-        onPointerMove={handleMove}
-        onPointerLeave={handleUp}
-        onPointerCancel={handleUp}
       >
         <planeGeometry args={[viewport.width, viewport.height]} />
         <meshBasicMaterial transparent={true} opacity={0} />
@@ -135,7 +114,7 @@ export default function Carousel() {
             height={planeSettings.height}
             setActivePlane={setActivePlane}
             activePlane={activePlane}
-            key={item.image}
+            key={item.slug}
             item={item}
             index={i}
           />

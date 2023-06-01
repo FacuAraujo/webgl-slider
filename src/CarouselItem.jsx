@@ -2,7 +2,6 @@ import {useEffect, useRef, useState} from 'react'
 import {useThree} from '@react-three/fiber'
 import gsap from 'gsap'
 import Plane from './Plane'
-import CurvedPlane from './CurvedPlane'
 
 export default function CarouselItem({
   index,
@@ -20,6 +19,24 @@ export default function CarouselItem({
   const timeoutID = useRef()
 
   useEffect(() => {
+    if (activePlane && activePlane !== index) {
+      gsap.to($root.current.scale, {
+        x: 0,
+        y: 0,
+        z: 0,
+        duration: 1,
+        ease: 'power3.out',
+      })
+    } else {
+      gsap.to($root.current.scale, {
+        x: 1,
+        y: 1,
+        z: 1,
+        duration: 1,
+        ease: 'power3.out',
+      })
+    }
+
     if (activePlane === index) {
       setIsActive(activePlane === index)
       setCloseActive(true)
@@ -36,22 +53,30 @@ export default function CarouselItem({
       ease: 'power3.out',
     })
 
-    isActive && $root.current.scale.set(1, 1, 1)
+    if (isActive) {
+      $root.current.scale.set(1, 1, 1)
+
+      const event = new CustomEvent("articleActive", {detail: item.slug});
+      document.dispatchEvent(event);
+    } else {
+      const event = new CustomEvent("articleActive", {detail: ""});
+      document.dispatchEvent(event);
+    }
   }, [isActive])
 
   /*------------------------------
   Hover effect
   ------------------------------*/
-  useEffect(() => {
-    const hoverScale = hover && !isActive ? 1.05 : 1
+  // useEffect(() => {
+  //   const hoverScale = hover && !isActive ? 1.01 : 1
 
-    gsap.to($root.current.scale, {
-      x: hoverScale,
-      y: hoverScale,
-      duration: 0.5,
-      ease: 'power3.out'
-    })
-  }, [hover, isActive])
+  //   gsap.to($root.current.scale, {
+  //     x: hoverScale,
+  //     y: hoverScale,
+  //     duration: 0.5,
+  //     ease: 'power3.out'
+  //   })
+  // }, [hover, isActive])
 
   const handleClose = (e) => {
     e.stopPropagation()
@@ -79,13 +104,6 @@ export default function CarouselItem({
         tex={item.image}
         active={isActive}
       />
-
-      {/* <CurvedPlane
-        width={width}
-        height={height}
-        tex={item.image}
-        active={isActive}
-      /> */}
 
       {isCloseActive && (
         <mesh position={[0, 0, 0.01]} onClick={handleClose}>
